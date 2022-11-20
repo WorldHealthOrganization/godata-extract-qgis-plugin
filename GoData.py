@@ -233,13 +233,12 @@ class goDataExtract:
         if self.first_start == True:
             self.first_start = False
             self.dlg = goDataExtractDialog()
-       
-        self.dlg.in_gd_locate_folder_btn.clicked.connect(self.in_gd_locate_folder)
-        self.dlg.in_gd_get_outbreaks.clicked.connect(self.get_token)
-        self.dlg.in_gd_locate_shp_btn.clicked.connect(self.in_gd_locate_shp_path)
-        self.dlg.in_gd_geojoin_box.clicked.connect(self.include_geo)
-        self.dlg.gd_ok.clicked.connect(self.get_cases)   
-        self.dlg.gd_cancel.clicked.connect(self.dlg.reject)
+            self.dlg.in_gd_locate_folder_btn.clicked.connect(self.in_gd_locate_folder)
+            self.dlg.in_gd_locate_shp_btn.clicked.connect(self.in_gd_locate_shp_path)
+            self.dlg.in_gd_get_outbreaks.clicked.connect(self.get_token)
+            self.dlg.in_gd_geojoin_box.clicked.connect(self.include_geo)
+            self.dlg.gd_ok.clicked.connect(self.get_cases)   
+            self.dlg.gd_cancel.clicked.connect(self.reject)
 
         # show the dialog
         self.dlg.show()
@@ -249,14 +248,27 @@ class goDataExtract:
         if result:
             pass
 
+    def reject(self):
+        self.dlg.in_gd_password.clear()
+        self.dlg.in_gd_ob_dd.clear()
+        self.dlg.in_gd_output_path.clear()
+        # self.dlg.in_gd_shape.clear()
+        self.dlg.in_gd_geojoin_box.setChecked(False)
+        self.include_geo()
+        # self.dlg.in_gd_fld_dd.clear()
+        self.dlg.reject()
+    
     def include_geo(self):
-        
         if self.dlg.in_gd_geojoin_box.isChecked():
             self.dlg.in_gd_shape.setEnabled(True)
             self.dlg.in_gd_locate_shp_btn.setEnabled(True)
-        else:
+        elif not self.dlg.in_gd_geojoin_box.isChecked():
             self.dlg.in_gd_shape.setEnabled(False)
             self.dlg.in_gd_locate_shp_btn.setEnabled(False)
+            self.dlg.in_gd_fld_dd.setEnabled(False)
+            self.dlg.in_gd_fld_dd.clear()
+            self.dlg.in_gd_shape.clear()
+
 
     def join_to_geo(self):
         summary_data = QgsVectorLayer(f'{self.in_gd_output_path}/{self.out_summary_data}.csv')
