@@ -9,7 +9,7 @@
         begin                : 2022-05-09
         git sha              : $Format:%H$
         copyright            : (C) 2022 by Go.Data
-        email                : gissupport@who.int
+        email                : adam@addressdatamatters.ca; Langstervision@gmail.com
  ***************************************************************************/
 
 /***************************************************************************

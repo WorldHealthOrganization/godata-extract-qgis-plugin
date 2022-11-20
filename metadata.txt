@@ -13,8 +13,8 @@ email=adam@addressdatamatters.ca; Langstervision@gmail.com
 
 about=This plugin extracts data from the Go.Data API
 
-tracker=https://github.com/adm-gis/go_data_extract.git
-repository=https://github.com/adm-gis/go_data_extract.git
+tracker=https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin/issues
+repository=https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin
 # End of mandatory metadata
 
 # Recommended items:
@@ -27,7 +27,7 @@ hasProcessingProvider=no
 tags=python, GoData
 
 #Add Go.Data homepage
-homepage=https://worldhealthorganization.github.io/godata/qgis/
+homepage=https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin
 category=Plugins
 icon=icon.png
 # experimental flag
