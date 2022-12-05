@@ -271,7 +271,12 @@ class goDataExtract:
 
 
     def join_to_geo(self):
-        summary_data = QgsVectorLayer(f'{self.in_gd_output_path}/{self.out_summary_data}.csv')
+        
+        uri = f'file:///{self.in_gd_output_path}/{self.out_summary_data}.csv?delimiter=,&decimal=.'
+        
+        summary_data = QgsVectorLayer(uri, 'in_memory_layer', 'delimitedtext')
+        
+
         self.in_gd_field = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[0]
       
         params = {'INPUT': self.vector_layer, 
@@ -577,7 +582,7 @@ class goDataExtract:
     
     def summarize_cases(self, df):
         try:
-            df.loc[df['dateOfReporting']==self.yesterday.strftime('%Y-%m-%d'), 'Daily New Confirmed']==1
+            df.loc[df['dateOfReporting']==self.yesterday.strftime('%Y-%m-%d'), 'Daily New Confirmed']=1
         except:
             df['Daily New Confirmed'] = 0
 
