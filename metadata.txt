@@ -7,7 +7,7 @@
 name=Go Data Extraction
 qgisMinimumVersion=3.0
 description=This plugin extracts data from the Go.Data API
-version=0.1
+version=0.2
 author=Adam McKay; Amy Louise Lang
 email=adam@addressdatamatters.ca; Langstervision@gmail.com
 
