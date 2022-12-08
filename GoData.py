@@ -451,7 +451,7 @@ class goDataExtract:
                     if 'months' in case[key]:
                         feature['age_months'] = case[key]['months']
                         if not years:
-                            feature['age_years']=0
+                            feature['age_years']=case[key]['months']//12
                 
                 elif key == 'addresses':
                     address = case[key][0]
