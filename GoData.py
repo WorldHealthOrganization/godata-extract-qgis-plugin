@@ -444,14 +444,11 @@ class goDataExtract:
             keys = case.keys()
             for key in keys:
                 if key == 'age':
-                    years = None
                     if 'years' in case[key]:
-                        years = True
                         feature['age_years'] = case[key]['years']
                     if 'months' in case[key]:
                         feature['age_months'] = case[key]['months']
-                        if not years:
-                            feature['age_years']=case[key]['months']//12
+                        feature['age_years']= 0
                 
                 elif key == 'addresses':
                     address = case[key][0]
