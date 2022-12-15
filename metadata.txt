@@ -6,8 +6,10 @@
 [general]
 name=Go Data Extraction
 qgisMinimumVersion=3.0
+
 description=This Plugin for QGIS enables users to log in to Go.Data and extract case data. 
 version=0.3
+
 author=Adam McKay; Amy Louise Lang
 email=adam@addressdatamatters.ca; Langstervision@gmail.com
 
@@ -40,6 +42,7 @@ deprecated=False
 # (or upgraded) can be specified.
 # Check the documentation for more information.
 # plugin_dependencies
+
 
 Category of the plugin: Raster, Vector, Database or Web
 # category=Database
