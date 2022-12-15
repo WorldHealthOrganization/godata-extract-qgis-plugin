@@ -444,7 +444,12 @@ class goDataExtract:
             keys = case.keys()
             for key in keys:
                 if key == 'age':
-                    feature['age'] = case[key]['years']
+                    if 'years' in case[key]:
+                        feature['age_years'] = case[key]['years']
+                    if 'months' in case[key]:
+                        feature['age_months'] = case[key]['months']
+                        feature['age_years']= 0
+                
                 elif key == 'addresses':
                     address = case[key][0]
                     location_id = address['locationId']
@@ -577,8 +582,8 @@ class goDataExtract:
     def get_age_groups(self, df):
         age_bins = [-1, 4, 14, 24, 64, 150]
         age_labels = ['<5 years', '5-14 years', '15-24 years', '25-64 years', '65+ years']
-        if 'age' in df.columns:
-            df['ageClass'] = pd.cut(df['age'], bins=age_bins, labels=age_labels)
+        if 'age_years' in df.columns:
+            df['ageClass'] = pd.cut(df['age_years'], bins=age_bins, labels=age_labels)
     
     def summarize_cases(self, df):
         try:
