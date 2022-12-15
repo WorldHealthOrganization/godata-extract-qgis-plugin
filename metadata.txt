@@ -6,12 +6,12 @@
 [general]
 name=Go Data Extraction
 qgisMinimumVersion=3.0
-description=This plugin extracts data from the Go.Data API
-version=0.1
+description=This Plugin for QGIS enables users to log in to Go.Data and extract case data. 
+version=0.3
 author=Adam McKay; Amy Louise Lang
 email=adam@addressdatamatters.ca; Langstervision@gmail.com
 
-about=This plugin extracts data from the Go.Data API
+about=This Plugin for QGIS enables users to log in to Go.Data and extract case data. Go.Data is an application which facilitates outbreak investigation, including field data collection, contact tracing, and visualization of chains of transmission. This plugin will extract data from the Go.Data API and will transform the JSON output to multiple csv files. The Plugin was created for somebody in the GIS role during emergency responses.  Specifically, they can access outbreak data, extract case and contact data, and automate the process to create maps for outbreak investigation.
 
 tracker=https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin/issues
 repository=https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin
@@ -39,7 +39,7 @@ deprecated=False
 # Since QGIS 3.8, a comma separated list of plugins to be installed
 # (or upgraded) can be specified.
 # Check the documentation for more information.
-#  plugin_dependencies= 
+# plugin_dependencies
 
 Category of the plugin: Raster, Vector, Database or Web
 # category=Database
@@ -47,3 +47,4 @@ Category of the plugin: Raster, Vector, Database or Web
 # If the plugin can run on QGIS Server.
 server=False
 
+python_dependencies = pandas
