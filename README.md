@@ -1,8 +1,17 @@
-# godata-extract-qgis-plugin
-This Plugin for QGIS enables users to log in to Go.Data and extract case data. Go.Data is an application which facilitates outbreak investigation, including field data collection, contact tracing, and visualization of chains of transmission. This plugin will extract data from the Go.Data API and will transform the JSON output to multiple csv files. The Plugin was created for somebody in the GIS role during emergency responses. Specifically, they can access outbreak data, extract case and contact data, and automate the process to create maps for outbreak investigation. 
+## godata-extract-qgis-plugin
+This Plugin for QGIS enables users to log in to [Go.Data](https://worldhealthorganization.github.io/godata/) and extract case data from within QGIS. Go.Data is an application which facilitates outbreak investigation, including field data collection, contact tracing, and visualization of chains of transmission. This plugin will extract data from the Go.Data API and will transform the JSON output to multiple csv files. The Plugin was created for somebody in the GIS role during emergency responses. Specifically, they can access outbreak data, extract case data, and automate the process to create maps for outbreak investigation and incident management. 
 
-Instructions for installing [Plugins](https://docs.qgis.org/3.22/en/docs/training_manual/qgis_plugins/fetching_plugins.html)
+## Requirements
+- Go.Data URL, username and password
+- Name of the outbreak you wish to extract data for
+- GIS layer for mapping (optional)
+- [QGIS](https://qgis.org/en/site/forusers/download.html) (plugin is known to be compatible with 3.22.11, 3.28.1, 3.4.7 and 3.22.14 - current LTR)
+- This plugin is currently functioning with Go.Data version 44
 
-Please note that this plug utilizes the Pandas python library. Should you need to install it, here is a [tutorial](https://youtu.be/vJXrD4_aF-o) to walk through the steps for installation.
+## Set up 
+There is no need to download the plugin from this repo, it can be added from the plugin manager within QGIS. Instructions for installing [Plugins](https://docs.qgis.org/3.22/en/docs/training_manual/qgis_plugins/fetching_plugins.html). Should you be operating offline and need to install locally - download zip from this repo and import the zip file via the QGIS plugin manager.
+
+## Dependencies
+Please note that this plug utilizes the 'Pandas' python library. The OSGeo4W/QGIS installation includes its own Python 3 environment and you will have make sure that pandas is included in this Python installation. To update your QGIS Python environment with the Pandas library, please watch the following quick [tutorial](https://youtu.be/vJXrD4_aF-o) to walk through the steps for installation.
 
 
