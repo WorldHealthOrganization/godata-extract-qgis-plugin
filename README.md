@@ -1,6 +1,8 @@
 ## godata-extract-qgis-plugin
 This Plugin for QGIS enables users to log in to [Go.Data](https://worldhealthorganization.github.io/godata/) and extract case data from within QGIS. Go.Data is an application which facilitates outbreak investigation, including field data collection, contact tracing, and visualization of chains of transmission. This plugin will extract data from the Go.Data API and will transform the JSON output to multiple csv files. The Plugin was created for somebody in the GIS role during emergency responses. Specifically, they can access outbreak data, extract case data, and automate the process to create maps for outbreak investigation and incident management. 
 
+For ESRI ArcGIS Pro users, please find our similar offering [here](https://github.com/WorldHealthOrganization/godata-ESRI-SITREP-toolbox).
+
 ## Requirements
 - Go.Data URL, username and password
 - Name of the outbreak you wish to extract data for
@@ -14,4 +16,12 @@ There is no need to download the plugin from this repo, it can be added from the
 ## Dependencies
 Please note that this plug utilizes the 'Pandas' python library. The OSGeo4W/QGIS installation includes its own Python 3 environment and you will have make sure that pandas is included in this Python installation. To update your QGIS Python environment with the Pandas library, please watch the following quick [tutorial](https://youtu.be/vJXrD4_aF-o) to walk through the steps for installation.
 
+## Help
+In case you're experiencing any challenge while using this plugin, or if you have enhancements to suggest, please comment [here](https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin/issues).
 
+## About
+This plugin is a part of a series of open source projects developed as part of an informal collaboration between the WHO GIS Centre for Health and the GIS focal point of the GOARN Go.Data team. The aim of the collaboration is to provide free open source tools to improve a GIS user's ability to access, transfom, analyze and visualize public health data geospatially, especially during an emergency response.
+
+Projects:
+- [ESRI SITREP toolbox](https://github.com/WorldHealthOrganization/godata-ESRI-SITREP-toolbox) - releaseed March, 2022
+- [Extract plugin](https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin) - released December, 2022
