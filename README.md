@@ -14,7 +14,7 @@ For ESRI ArcGIS Pro users, please find our similar offering [here](https://githu
 There is no need to download the plugin from this repo, it can be added from the plugin manager within QGIS. Instructions for installing [Plugins](https://docs.qgis.org/3.22/en/docs/training_manual/qgis_plugins/fetching_plugins.html). Should you be operating offline and need to install locally - download zip from this repo and import the zip file via the QGIS plugin manager.
 
 ## Dependencies
-Please note that this plug utilizes the 'Pandas' python library. The OSGeo4W/QGIS installation includes its own Python 3 environment and you will have make sure that pandas is included in this Python installation. To update your QGIS Python environment with the Pandas library, please watch the following quick [tutorial](https://youtu.be/vJXrD4_aF-o) to walk through the steps for installation.
+Please note that this plugin utilizes the 'Pandas' python library. The OSGeo4W/QGIS installation includes its own Python 3 environment and you will have make sure that pandas is included in this Python installation. To update your QGIS Python environment with the Pandas library, please watch the following quick [tutorial](https://youtu.be/vJXrD4_aF-o) to walk through the steps for installation.
 
 ## Help
 In case you're experiencing any challenge while using this plugin, or if you have enhancements to suggest, please comment [here](https://github.com/WorldHealthOrganization/godata-extract-qgis-plugin/issues).
