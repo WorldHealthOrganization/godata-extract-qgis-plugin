@@ -3,6 +3,9 @@ This Plugin for QGIS enables users to log in to [Go.Data](https://worldhealthorg
 
 For ESRI ArcGIS Pro users, please find our similar offering [here](https://github.com/WorldHealthOrganization/godata-ESRI-SITREP-toolbox).
 
+## Quick View
+![extract](/assets/images/Artboard5.png)
+
 ## Requirements
 - Go.Data URL, username and password
 - Name of the outbreak you wish to extract data for
