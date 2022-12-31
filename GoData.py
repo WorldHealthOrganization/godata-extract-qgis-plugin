@@ -486,7 +486,11 @@ class goDataExtract:
         self.clean_ref_data(self.cases_df)
         self.update_date_fields(self.cases_df)
         self.get_age_groups(self.cases_df)
+
+        self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_name'].isna(), f'admin_{self.admin_level}_name'] = 'No Location Provided'
+        self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_LocationId'].isna(), f'admin_{self.admin_level}_LocationId'] = 'No Location Provided'
         self.cases_df.to_csv(f'{self.in_gd_output_path}/cases.csv', index = False, encoding='utf-8-sig')
+        
         self.summarize_cases(self.cases_df)
         if self.dlg.in_gd_geojoin_box.isChecked():
             self.join_to_geo()
@@ -608,7 +612,8 @@ class goDataExtract:
                 & (df['dateOfReporting']>=self.seven_days_ago.strftime('%Y-%m-%d')), 'Confirmed Last Seven']=1
         except:
             df['Confirmed Last Seven'] = 0
-            
+
+
         df['Total Count'] = 1
 
         summary_cases = df.groupby([f'admin_{self.admin_level}_name', self.tabular_join_field]).sum()[['Daily New Confirmed','Confirmed Last Seven','Confirmed Last Fourteen','Confirmed Last Twenty Eight','Total Count']]
