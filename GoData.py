@@ -97,6 +97,7 @@ class goDataExtract:
         self.yesterday_delta = timedelta(days=1)
         self.eight_days_delta = timedelta(days=8)
         self.fifteen_days_delta = timedelta(days=15)
+        self.twenty_one_days_delta = timedelta(days=21)
         self.twenty_eight_days_delta = timedelta(days=28)
         self.one_week_delta = timedelta(weeks=1)
         self.two_week_delta = timedelta(weeks=2)
@@ -105,6 +106,7 @@ class goDataExtract:
         self.seven_days_ago = (self.right_now - self.one_week_delta).date()
         self.eight_days_ago = (self.right_now - self.eight_days_delta).date()
         self.fourteen_days_ago = (self.right_now - self.two_week_delta).date()
+        self.twenty_one_days_ago = (self.right_now - self.twenty_one_days_delta).date()
         self.fifteen_days_ago = (self.right_now - self.fifteen_days_delta).date()
         self.twenty_eight_days_ago = (self.right_now - self.twenty_eight_days_delta).date()
 
@@ -601,6 +603,12 @@ class goDataExtract:
         except:
             df['Confirmed Last Fourteen'] = 0
 
+        try:
+            df.loc[(df['dateOfReporting']<=self.yesterday.strftime('%Y-%m-%d')) 
+                & (df['dateOfReporting']>=self.twenty_one_days_ago.strftime('%Y-%m-%d')), 'Confirmed Last Twenty One']=1
+        except:
+            df['Confirmed Last Twenty one'] = 0
+        
         try:
             df.loc[(df['dateOfReporting']<=self.yesterday.strftime('%Y-%m-%d')) 
                 & (df['dateOfReporting']>=self.twenty_eight_days_ago.strftime('%Y-%m-%d')), 'Confirmed Last Twenty Eight']=1
