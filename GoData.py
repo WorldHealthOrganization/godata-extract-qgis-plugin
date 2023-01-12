@@ -624,6 +624,6 @@ class goDataExtract:
 
         df['Total Count'] = 1
 
-        summary_cases = df.groupby([f'admin_{self.admin_level}_name', self.tabular_join_field]).sum()[['Daily New Confirmed','Confirmed Last Seven','Confirmed Last Fourteen','Confirmed Last Twenty Eight','Total Count']]
+        summary_cases = df.groupby([f'admin_{self.admin_level}_name', self.tabular_join_field]).sum()[['Daily New Confirmed','Confirmed Last Seven','Confirmed Last Fourteen','Confirmed Last Twenty One','Confirmed Last Twenty Eight','Total Count']]
 
         summary_cases.to_csv(f'{self.in_gd_output_path}/{self.out_summary_data}.csv', encoding='utf-8-sig')
