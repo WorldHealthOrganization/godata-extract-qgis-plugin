@@ -87,6 +87,7 @@ class goDataExtract:
         self.in_gd_shape = None
         self.shp_stem = None
         self.in_gd_field = None
+        self.in_gd_fieldtype = None
         self.in_gd_geojoin_box = None
         self.vector_layer = None
         
@@ -297,14 +298,6 @@ class goDataExtract:
         for fld in vector_fields:
             self.dlg.in_gd_fld_dd.addItem(fld.name() + ' - ' + fld.typeName())
 
-    def set_in_gd_output_path(self):
-        if not self.in_gd_output_path and not self.dlg.in_gd_output_path.text():
-            QMessageBox.critical(self.dlg, 'Error', 'Please enter a valid output path')
-            return None
-        else:
-            self.in_gd_output_path = self.dlg.in_gd_output_path.text()
-            return self.in_gd_output_path
-
     def in_gd_locate_folder(self):
         output_path_dir = QFileDialog.getExistingDirectory(parent=None, caption= u'Select Folder')
         self.dlg.in_gd_output_path.setText(output_path_dir)
@@ -397,9 +390,6 @@ class goDataExtract:
                     feature[key] = loc_value        
             features.append(feature)
 
-        if not self.set_in_gd_output_path():
-            return
-
         self.locations_df = pd.DataFrame(features)
         self.locations_df.to_csv(f'{self.in_gd_output_path}/locations.csv', index=False, encoding='utf-8-sig')  
         self.reorganized_locations = pd.DataFrame()
@@ -416,7 +406,7 @@ class goDataExtract:
         QgsMessageLog.logMessage(msg, level = Qgis.Success)
 
     def get_cases(self):
-        self.progressions('Starting plugin', 0)
+
         if not self.access_token:
             QMessageBox.about(self.dlg, 'Warning', 'Please aquire an access token by providing valid username and password \n and then clicking \'Connect\'')
             return
@@ -425,8 +415,26 @@ class goDataExtract:
             QMessageBox.about(self.dlg, 'Warning', 'Please provide a pathway to a shapefile \n or unselect \'Join to shapefile\'')
             return
 
-        self.progressions('Getting Cases', 1)
-        
+        if not self.dlg.in_gd_output_path.text() or not Path(self.dlg.in_gd_output_path.text()).exists():
+            QMessageBox.critical(self.dlg, 'Error', 'Please enter a valid output path')
+            return
+        else:
+            self.in_gd_output_path = self.dlg.in_gd_output_path.text()
+
+        self.in_gd_fieldtype = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[1]
+        if 'String' not in self.in_gd_fieldtype:
+            reply = QMessageBox.question(self.dlg, 'Possible Datatype Mismatch!', f'The Go.Data API and this plugin treat the unique identifiers of the \
+                locations as string datatypes.  You have selected a {self.in_gd_fieldtype} datatype.  This will likely produce unexpected and/or incorrect results. \
+                    \n\nWould you like to proceed?', QMessageBox.Yes, QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
+            if reply == QMessageBox.Yes:
+                QgsMessageLog.logMessage('Datatype mismatch.  Results may be unexpected', level=Qgis.Warning)
+
+        self.progressions('Starting plugin', 0)
+
+        self.progressions('Getting Cases from Go.Data API', 1)
+
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
         self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
         params = { 
@@ -437,11 +445,11 @@ class goDataExtract:
 
         QgsMessageLog.logMessage(f'Found cases!  There are {len(case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
 
-        self.progressions('Getting Locations', 20)
+        self.progressions('Getting Locations from Go.Data API', 20)
 
         self.get_locations()
 
-        self.progressions('Cleaning Cases', 30)
+        self.progressions('Re-organizing data', 30)
 
         features = []
         for case in case_data_json:
@@ -482,8 +490,7 @@ class goDataExtract:
                     feature[key] = case_value 
             features.append(feature)  
     
-        if not self.set_in_gd_output_path():
-            return
+
 
         self.cases_df = pd.DataFrame(features)
         self.get_admin_level()
