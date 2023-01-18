@@ -18,9 +18,9 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import Qt, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox, QProgressBar
 from qgis.core import Qgis, QgsMessageLog, QgsVectorLayer, QgsProject
 import processing
 
@@ -67,7 +67,6 @@ class goDataExtract:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Go Data Extraction')
-        
         
         self.selected_outbreak_id = None
         self.selected_outbreak_name= None
@@ -271,12 +270,8 @@ class goDataExtract:
 
 
     def join_to_geo(self):
-        
-        uri = f'file:///{self.in_gd_output_path}/{self.out_summary_data}.csv?delimiter=,&decimal=.'
-        
-        summary_data = QgsVectorLayer(uri, 'in_memory_layer', 'delimitedtext')
-        
-
+        uri = f'file:///{self.in_gd_output_path}/{self.out_summary_data}.csv?delimiter=,&decimal=.'    
+        summary_data = QgsVectorLayer(uri, 'in_memory_layer', 'delimitedtext')      
         self.in_gd_field = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[0]
       
         params = {'INPUT': self.vector_layer, 
@@ -290,7 +285,6 @@ class goDataExtract:
         result_layer.setName(f'{self.shp_stem}_Outbreaks_{self.timestamp}')
         QgsProject.instance().addMapLayer(result_layer)
 
-
     def in_gd_locate_shp_path(self):
         shp_path_dir = QFileDialog.getOpenFileName(parent=None, caption= u'Select Shapefile', filter='Shapefile (*.shp)') #  returns a list within a tuple
         self.dlg.in_gd_shape.setText(shp_path_dir[0]) 
@@ -302,10 +296,6 @@ class goDataExtract:
         self.dlg.in_gd_fld_dd.setEnabled(True)
         for fld in vector_fields:
             self.dlg.in_gd_fld_dd.addItem(fld.name() + ' - ' + fld.typeName())
-
-
-    def msg_complete(self):
-        self.iface.messageBar().pushMessage('Complete!', level=Qgis.Success)
 
     def set_in_gd_output_path(self):
         if not self.in_gd_output_path and not self.dlg.in_gd_output_path.text():
@@ -356,13 +346,10 @@ class goDataExtract:
         QgsMessageLog.logMessage(f'Go.Data Token acquired: {self.access_token}', level=Qgis.Info)
         self.get_outbreaks()
         return      
-
-    # def progress_bar(self):
-    #     self.progress = QProgressBar()  
-        
+      
     def get_outbreaks(self):
         self.dlg.in_gd_ob_dd.clear()
-        self.iface.messageBar().pushMessage(f'Getting outbreaks available for {self.in_gd_username} :::', level=Qgis.Info)
+        QgsMessageLog.logMessage(f'Getting outbreaks available for user: {self.in_gd_username}', level=Qgis.Info)
         params = { 'access_token': self.access_token }
         outbreaks_res = requests.get(f'{self.in_gd_api_url}/api/outbreaks', params=params)
         outbreaks_res_json = outbreaks_res.json()
@@ -382,7 +369,7 @@ class goDataExtract:
             # if outbreak not in [self.dlg.in_gd_ob_dd.itemText(i) for i in range(self.dlg.in_gd_ob_dd.count())]:
             self.dlg.in_gd_ob_dd.addItem(outbreak)
 
-        self.iface.messageBar().pushMessage(f'Connected to GoData API!', level=Qgis.Success)
+        QgsMessageLog.logMessage(f'Connected to GoData API!', level=Qgis.Success)
     
 
     def get_locations(self):  
@@ -390,7 +377,7 @@ class goDataExtract:
         }
         location_data = requests.get(f'{self.in_gd_api_url}/api/locations', params=params)
         location_data_json = location_data.json()
-        self.iface.messageBar().pushMessage(f'Found locations :: {len(location_data_json)} locations found', level=Qgis.Success)
+        QgsMessageLog.logMessage(f'Found locations! There are {len(location_data_json)} locations found for the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
        
         features = []
         for loc in location_data_json:
@@ -417,9 +404,19 @@ class goDataExtract:
         self.locations_df.to_csv(f'{self.in_gd_output_path}/locations.csv', index=False, encoding='utf-8-sig')  
         self.reorganized_locations = pd.DataFrame()
         self.locations_reorg_df = self.reorganize_locations(self.locations_df)
-        # self.locations_reorg_df.to_csv(f'{self.in_gd_output_path}/locations_reorg.csv', index=False, encoding='utf-8-sig')
-        
+
+    def progressions(self, msg, val):
+        self.iface.messageBar().clearWidgets()
+        self.progressMessageBar = self.iface.messageBar().createMessage(msg)
+        self.progress = QProgressBar()
+        self.progress.setAlignment(Qt.AlignLeft|Qt.AlignVCenter)
+        self.progressMessageBar.layout().addWidget(self.progress)
+        self.iface.messageBar().pushWidget(self.progressMessageBar, Qgis.Info)
+        self.progress.setValue(val)
+        QgsMessageLog.logMessage(msg, level = Qgis.Success)
+
     def get_cases(self):
+        self.progressions('Starting plugin', 0)
         if not self.access_token:
             QMessageBox.about(self.dlg, 'Warning', 'Please aquire an access token by providing valid username and password \n and then clicking \'Connect\'')
             return
@@ -428,7 +425,8 @@ class goDataExtract:
             QMessageBox.about(self.dlg, 'Warning', 'Please provide a pathway to a shapefile \n or unselect \'Join to shapefile\'')
             return
 
-        self.get_locations()
+        self.progressions('Getting Cases', 1)
+        
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
         self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
         params = { 
@@ -436,7 +434,14 @@ class goDataExtract:
             }
         case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases', params=params)
         case_data_json = case_data.json()
-        self.iface.messageBar().pushMessage(f'Found cases :: {len(case_data_json)} cases found', level=Qgis.Success)
+
+        QgsMessageLog.logMessage(f'Found cases!  There are {len(case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
+
+        self.progressions('Getting Locations', 20)
+
+        self.get_locations()
+
+        self.progressions('Cleaning Cases', 30)
 
         features = []
         for case in case_data_json:
@@ -482,19 +487,25 @@ class goDataExtract:
 
         self.cases_df = pd.DataFrame(features)
         self.get_admin_level()
+        self.progressions('Joining location data to case data', 45)
         self.join_locs_to_cases()
+        self.progressions('Cleaning reference data', 60)
         self.clean_ref_data(self.cases_df)
+        self.progressions('Enhancing case data', 75)
         self.update_date_fields(self.cases_df)
         self.get_age_groups(self.cases_df)
 
         self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_name'].isna(), f'admin_{self.admin_level}_name'] = 'No Location Provided'
         self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_LocationId'].isna(), f'admin_{self.admin_level}_LocationId'] = 'No Location Provided'
         self.cases_df.to_csv(f'{self.in_gd_output_path}/cases.csv', index = False, encoding='utf-8-sig')
-        
+        self.progressions('Summarizing cases by location', 80)
         self.summarize_cases(self.cases_df)
         if self.dlg.in_gd_geojoin_box.isChecked():
+            self.progressions('Joining summarized cases to shapefile', 90)
             self.join_to_geo()
-        self.msg_complete()
+        self.progressions('Complete', 100)
+
+        # self.iface.messageBar().clearWidgets()
         self.dlg.accept()
 
     def get_admin_level(self):
@@ -543,7 +554,7 @@ class goDataExtract:
             return self.reorganized_locations
 
         except Exception as e:
-            self.iface.messageBar().pushMessage(f'{e}', level=Qgis.Info)
+            QgsMessageLog.logMessage(f'{e}', level=Qgis.Info)
 
     def update_date_fields(self, df):
         date_flds = ['date', 'dateOfReporting', 'dateOfOnset', 'dateOfInfection', 'dateOfLastContact', 
@@ -575,13 +586,6 @@ class goDataExtract:
         self.fieldValueSplitter(df, 'outcomeId', 'OUTCOME_')     
         self.fieldValueSplitter(df, 'pregnancyStatus', 'PREGNANCY_STATUS_')           
         self.fieldValueSplitter(df, 'occupation', 'OCCUPATION_')
-        # self.fieldValueSplitter(df, 'source_person_type', 'PERSON_TYPE_')
-        # self.fieldValueSplitter(df, 'target_person_type', 'PERSON_TYPE_')
-        # self.fieldValueSplitter(df, 'exposureTypeId', 'exposureTypeId')
-        # self.fieldValueSplitter(df, 'socialRelationshipTypeId', 'TRANSMISSION_')
-        # self.fieldValueSplitter(df, 'exposureDurationId', 'DURATION_')
-        # self.fieldValueSplitter(df, 'exposureFrequencyId', 'FREQUENCY_')
-        # self.fieldValueSplitter(df, 'certaintyLevelId', 'CERTAINTY_LEVEL_')
     
     def get_age_groups(self, df):
         age_bins = [-1, 4, 14, 24, 64, 150]
