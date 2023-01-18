@@ -233,6 +233,9 @@
                <property name="maxLength">
                 <number>500</number>
                </property>
+               <property name="placeholderText">
+                <string>https://godata-&lt;server-name&gt;.who.int/</string>
+               </property>
               </widget>
              </item>
              <item>
