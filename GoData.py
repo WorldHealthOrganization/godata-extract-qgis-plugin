@@ -67,20 +67,16 @@ class goDataExtract:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Go Data Extraction')
-        
-        self.selected_outbreak_id = None
+
+        self.clear_caches()
+
         self.selected_outbreak_name= None
-        self.outbreaks_cache = {}
         self.available_outbreaks = []
         self.in_gd_api_url = None
         self.in_gd_username = None
         self.in_gd_password = None
         self.in_gd_output_path = None
         self.in_gd_locate_folder_btn = None
-        self.access_token = None
-        self.locations_df = None
-        self.locations_reorg_df = None
-        self.cases_df = None
         self.admin_level = ''
         self.tabular_join_field = None
         self.in_gd_locate_shp_btn = None
@@ -90,7 +86,6 @@ class goDataExtract:
         self.in_gd_fieldtype = None
         self.in_gd_geojoin_box = None
         self.vector_layer = None
-        
 
         self.right_now = datetime.now()
         self.timestamp = self.right_now.strftime('%Y-%m-%d_%H%M%S')
@@ -113,6 +108,27 @@ class goDataExtract:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+
+    def clear_metadata_cache(self):
+        self.access_token = None
+        self.outbreaks_cache = {}
+        self.selected_outbreak_id = None
+
+    def clear_data_cache(self):
+        self.locations_df = None
+        self.cases_df = None
+        self.locations_reorg_df = None
+        self.reorganized_locations = None
+
+    def clear_cases_cache(self):
+        self.case_data = None
+        self.case_data_json = None
+        self.features = []
+
+    def clear_caches(self):
+        self.clear_metadata_cache()
+        self.clear_data_cache()
+        self.clear_cases_cache()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -233,11 +249,12 @@ class goDataExtract:
         if self.first_start == True:
             self.first_start = False
             self.dlg = goDataExtractDialog()
-            self.dlg.in_gd_locate_folder_btn.clicked.connect(self.in_gd_locate_folder)
-            self.dlg.in_gd_locate_shp_btn.clicked.connect(self.in_gd_locate_shp_path)
             self.dlg.in_gd_get_outbreaks.clicked.connect(self.get_token)
+            self.dlg.in_gd_locate_folder_btn.clicked.connect(self.in_gd_locate_folder)
             self.dlg.in_gd_geojoin_box.clicked.connect(self.include_geo)
-            self.dlg.gd_ok.clicked.connect(self.get_cases)   
+            self.dlg.in_gd_locate_shp_btn.clicked.connect(self.set_in_gd_locate_shp_path)
+            self.dlg.in_gd_shape.editingFinished.connect(self.check_shp)
+            self.dlg.gd_ok.clicked.connect(self.trigger)   
             self.dlg.gd_cancel.clicked.connect(self.reject)
 
         # show the dialog
@@ -247,6 +264,18 @@ class goDataExtract:
         # See if OK was pressed
         if result:
             pass
+
+    def trigger(self):
+        try:
+            self.get_cases()
+        except Exception as e:
+            self.iface.messageBar().clearWidgets()
+            self.clear_metadata_cache()
+            self.clear_data_cache()
+            self.clear_cases_cache()
+            QgsMessageLog.logMessage(str(e), level=Qgis.Critical)
+            self.iface.messageBar().pushMessage("Plugin failed - please view log for more details", level=Qgis.Critical, duration=0)
+            raise
 
     def reject(self):
         self.dlg.in_gd_password.clear()
@@ -286,10 +315,13 @@ class goDataExtract:
         result_layer.setName(f'{self.shp_stem}_Outbreaks_{self.timestamp}')
         QgsProject.instance().addMapLayer(result_layer)
 
-    def in_gd_locate_shp_path(self):
+    def set_in_gd_locate_shp_path(self):
         shp_path_dir = QFileDialog.getOpenFileName(parent=None, caption= u'Select Shapefile', filter='Shapefile (*.shp)') #  returns a list within a tuple
         self.dlg.in_gd_shape.setText(shp_path_dir[0]) 
         self.in_gd_shape = self.dlg.in_gd_shape.text()
+        self.set_in_gd_shape_vars()
+
+    def set_in_gd_shape_vars(self):
         self.shp_stem = Path(self.dlg.in_gd_shape.text()).stem
         self.vector_layer = QgsVectorLayer(self.in_gd_shape, self.shp_stem)
         vector_fields = self.vector_layer.fields()
@@ -297,6 +329,24 @@ class goDataExtract:
         self.dlg.in_gd_fld_dd.setEnabled(True)
         for fld in vector_fields:
             self.dlg.in_gd_fld_dd.addItem(fld.name() + ' - ' + fld.typeName())
+
+    def check_shp(self):
+        if self.dlg.in_gd_shape.isModified():
+            self.in_gd_shape = self.dlg.in_gd_shape.text().replace('\u202a', '')
+            if Path(self.in_gd_shape).exists():
+                if not Path(self.in_gd_shape).is_dir():
+                    if Path(self.in_gd_shape).suffix == '.shp':
+                        self.set_in_gd_shape_vars()
+                    else:
+                        QMessageBox.about(self.dlg, 'Warning', 'Not a shapefile.  Make sure file extension is .shp')
+                        self.dlg.in_gd_fld_dd.clear()
+                else:
+                    QMessageBox.about(self.dlg, 'Warning', 'Please enter path to a shapefile')
+                    self.dlg.in_gd_fld_dd.clear()
+            else:
+                QMessageBox.about(self.dlg, 'Warning', 'Path does not exist')
+                self.dlg.in_gd_fld_dd.clear()
+
 
     def in_gd_locate_folder(self):
         output_path_dir = QFileDialog.getExistingDirectory(parent=None, caption= u'Select Folder')
@@ -336,7 +386,12 @@ class goDataExtract:
                 QMessageBox.critical(self.dlg, 'Error', 'Connection to Go.Data Failed with HTTP Response:\n'+ str(e))
 
         self.access_token = ast.literal_eval(r)['access_token']
+        
+        self.in_gd_password = None
+        self.dlg.in_gd_password.clear()
+
         QgsMessageLog.logMessage(f'Go.Data Token acquired: {self.access_token}', level=Qgis.Info)
+        
         self.get_outbreaks()
         return      
       
@@ -421,18 +476,20 @@ class goDataExtract:
         else:
             self.in_gd_output_path = self.dlg.in_gd_output_path.text()
 
-        self.in_gd_fieldtype = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[1]
-        if 'String' not in self.in_gd_fieldtype:
-            reply = QMessageBox.question(self.dlg, 'Possible Datatype Mismatch!', f'The Go.Data API and this plugin treat the unique identifiers of the \
-                locations as string datatypes.  You have selected a {self.in_gd_fieldtype} datatype.  This will likely produce unexpected and/or incorrect results. \
-                    \n\nWould you like to proceed?', QMessageBox.Yes, QMessageBox.No)
-            if reply == QMessageBox.No:
-                return
-            if reply == QMessageBox.Yes:
-                QgsMessageLog.logMessage('Datatype mismatch.  Results may be unexpected', level=Qgis.Warning)
+        if self.dlg.in_gd_geojoin_box.isChecked():
+            self.in_gd_fieldtype = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[1]
+            if 'String' not in self.in_gd_fieldtype:
+                reply = QMessageBox.question(self.dlg, 'Possible Datatype Mismatch!', f'The Go.Data API and this plugin treat the unique identifiers of the \
+                    locations as string datatypes.  You have selected a {self.in_gd_fieldtype} datatype.  This will likely produce unexpected and/or incorrect results. \
+                        \n\nWould you like to proceed?', QMessageBox.Yes, QMessageBox.No)
+                if reply == QMessageBox.No:
+                    return 
+                if reply == QMessageBox.Yes:
+                    QgsMessageLog.logMessage('Datatype mismatch.  Results may be unexpected', level=Qgis.Warning)
+        
+        self.set_in_gd_shape_vars()
 
         self.progressions('Starting plugin', 0)
-
         self.progressions('Getting Cases from Go.Data API', 1)
 
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
@@ -440,10 +497,10 @@ class goDataExtract:
         params = { 
             'access_token': self.access_token 
             }
-        case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases', params=params)
-        case_data_json = case_data.json()
+        self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases', params=params)
+        self.case_data_json = self.case_data.json()
 
-        QgsMessageLog.logMessage(f'Found cases!  There are {len(case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
+        QgsMessageLog.logMessage(f'Found cases!  There are {len(self.case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
 
         self.progressions('Getting Locations from Go.Data API', 20)
 
@@ -451,8 +508,7 @@ class goDataExtract:
 
         self.progressions('Re-organizing data', 30)
 
-        features = []
-        for case in case_data_json:
+        for case in self.case_data_json:
             feature = {}
             keys = case.keys()
             for key in keys:
@@ -488,11 +544,14 @@ class goDataExtract:
                 elif not isinstance(case[key], collections.abc.Mapping) and not isinstance(case[key], list):
                     case_value = case[key]     
                     feature[key] = case_value 
-            features.append(feature)  
-    
+            self.features.append(feature)  
+        
+        self.cases_df = pd.DataFrame(self.features)
+        
+        feature=None
+        case=None
+        
 
-
-        self.cases_df = pd.DataFrame(features)
         self.get_admin_level()
         self.progressions('Joining location data to case data', 45)
         self.join_locs_to_cases()
@@ -512,7 +571,8 @@ class goDataExtract:
             self.join_to_geo()
         self.progressions('Complete', 100)
 
-        # self.iface.messageBar().clearWidgets()
+        self.clear_caches()
+
         self.dlg.accept()
 
     def get_admin_level(self):
