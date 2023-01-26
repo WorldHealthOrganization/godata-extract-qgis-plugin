@@ -96,6 +96,7 @@ class goDataExtract:
         self.yesterday_delta = timedelta(days=1)
         self.eight_days_delta = timedelta(days=8)
         self.fifteen_days_delta = timedelta(days=15)
+        self.twenty_one_days_delta = timedelta(days=21)
         self.twenty_eight_days_delta = timedelta(days=28)
         self.one_week_delta = timedelta(weeks=1)
         self.two_week_delta = timedelta(weeks=2)
@@ -104,6 +105,7 @@ class goDataExtract:
         self.seven_days_ago = (self.right_now - self.one_week_delta).date()
         self.eight_days_ago = (self.right_now - self.eight_days_delta).date()
         self.fourteen_days_ago = (self.right_now - self.two_week_delta).date()
+        self.twenty_one_days_ago = (self.right_now - self.twenty_one_days_delta).date()
         self.fifteen_days_ago = (self.right_now - self.fifteen_days_delta).date()
         self.twenty_eight_days_ago = (self.right_now - self.twenty_eight_days_delta).date()
 
@@ -607,6 +609,12 @@ class goDataExtract:
 
         try:
             df.loc[(df['dateOfReporting']<=self.yesterday.strftime('%Y-%m-%d')) 
+                & (df['dateOfReporting']>=self.twenty_one_days_ago.strftime('%Y-%m-%d')), 'Confirmed Last Twenty One']=1
+        except:
+            df['Confirmed Last Twenty one'] = 0
+        
+        try:
+            df.loc[(df['dateOfReporting']<=self.yesterday.strftime('%Y-%m-%d')) 
                 & (df['dateOfReporting']>=self.twenty_eight_days_ago.strftime('%Y-%m-%d')), 'Confirmed Last Twenty Eight']=1
         except:
             df['Confirmed Last Twenty Eight'] = 0
@@ -620,6 +628,6 @@ class goDataExtract:
 
         df['Total Count'] = 1
 
-        summary_cases = df.groupby([f'admin_{self.admin_level}_name', self.tabular_join_field]).sum()[['Daily New Confirmed','Confirmed Last Seven','Confirmed Last Fourteen','Confirmed Last Twenty Eight','Total Count']]
+        summary_cases = df.groupby([f'admin_{self.admin_level}_name', self.tabular_join_field]).sum()[['Daily New Confirmed','Confirmed Last Seven','Confirmed Last Fourteen','Confirmed Last Twenty One','Confirmed Last Twenty Eight','Total Count']]
 
         summary_cases.to_csv(f'{self.in_gd_output_path}/{self.out_summary_data}.csv', encoding='utf-8-sig')
