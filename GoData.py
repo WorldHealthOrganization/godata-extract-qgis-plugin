@@ -423,8 +423,7 @@ class goDataExtract:
     
 
     def get_locations(self):  
-        params = {            "access_token": self.access_token,
-        }
+        params = { "access_token": self.access_token }
         location_data = requests.get(f'{self.in_gd_api_url}/api/locations', params=params)
         location_data_json = location_data.json()
         QgsMessageLog.logMessage(f'Found locations! There are {len(location_data_json)} locations found for the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
@@ -496,12 +495,14 @@ class goDataExtract:
 
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
         self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
-        params = { 
-            'access_token': self.access_token 
-            }
-        self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases', params=params)
+        
+
+        params = { 'access_token': self.access_token }
+        fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3Afalse%2C%20%22lastName%22%3A%20false%2C%20%22duplicateKeys%22%3Afalse%7D%7D'
+        self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases?{fld_filter}&access_token={self.access_token}')
         self.case_data_json = self.case_data.json()
 
+        QgsMessageLog.logMessage(self.case_data.url, level=Qgis.Success)
         QgsMessageLog.logMessage(f'Found cases!  There are {len(self.case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
 
         self.progressions('Getting Locations from Go.Data API', 20)
@@ -572,6 +573,12 @@ class goDataExtract:
             self.progressions('Joining summarized cases to shapefile', 90)
             self.join_to_geo()
         self.progressions('Complete', 100)
+
+        logout = requests.post(f'{self.in_gd_api_url}/api/users/logout?access_token={self.access_token}')
+        if logout.status_code == 204:
+            QgsMessageLog.logMessage(f'Logged out successfully with status code: {logout.status_code}', level=Qgis.Info)
+        else:
+            QgsMessageLog.logMessage(f'Could not logout user.  Returned status code: {logout.status_code}', level=Qgis.Warning)
 
         self.clear_caches()
 
