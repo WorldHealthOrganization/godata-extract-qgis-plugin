@@ -271,11 +271,10 @@ class goDataExtract:
         try:
             self.get_cases()
         except Exception as e:
-            self.iface.messageBar().clearWidgets()
-            self.clear_metadata_cache()
-            self.clear_data_cache()
-            self.clear_cases_cache()
+            self.clear_caches()
+            self.logout()
             QgsMessageLog.logMessage(str(e), level=Qgis.Critical)
+            self.iface.messageBar().clearWidgets()
             self.iface.messageBar().pushMessage("Plugin failed - please view log for more details", level=Qgis.Critical, duration=0)
             raise
 
@@ -574,15 +573,19 @@ class goDataExtract:
             self.join_to_geo()
         self.progressions('Complete', 100)
 
+        self.logout()
+
+        self.clear_caches()
+
+        self.dlg.accept()
+
+    def logout(self):
         logout = requests.post(f'{self.in_gd_api_url}/api/users/logout?access_token={self.access_token}')
         if logout.status_code == 204:
             QgsMessageLog.logMessage(f'Logged out successfully with status code: {logout.status_code}', level=Qgis.Info)
         else:
             QgsMessageLog.logMessage(f'Could not logout user.  Returned status code: {logout.status_code}', level=Qgis.Warning)
 
-        self.clear_caches()
-
-        self.dlg.accept()
 
     def get_admin_level(self):
         all_loc_ids =  self.locations_df[['id', 'adminLevel']].loc[self.locations_df['adminLevel']!=-1].rename(columns={'id':'locationId'}).set_index('locationId')
