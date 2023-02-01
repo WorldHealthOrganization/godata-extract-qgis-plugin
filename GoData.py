@@ -269,7 +269,7 @@ class goDataExtract:
 
     def trigger(self):
         try:
-            self.get_cases()
+            self.get_outbreak_data()
         except Exception as e:
             self.iface.messageBar().clearWidgets()
             self.clear_metadata_cache()
@@ -462,8 +462,7 @@ class goDataExtract:
         self.progress.setValue(val)
         QgsMessageLog.logMessage(msg, level = Qgis.Success)
 
-    def get_cases(self):
-
+    def validate_user_input(self):
         if not self.access_token:
             QMessageBox.about(self.dlg, 'Warning', 'Please aquire an access token by providing valid username and password \n and then clicking \'Connect\'')
             return
@@ -488,10 +487,15 @@ class goDataExtract:
                     return 
                 if reply == QMessageBox.Yes:
                     QgsMessageLog.logMessage('Datatype mismatch.  Results may be unexpected', level=Qgis.Warning)
+
+    def get_outbreak_data(self):
+
+        self.validate_user_input()
         
         self.set_in_gd_shape_vars()
 
         self.progressions('Starting plugin', 0)
+        
         self.progressions('Getting Cases from Go.Data API', 1)
 
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
@@ -520,7 +524,6 @@ class goDataExtract:
                     if 'months' in case[key]:
                         feature['age_months'] = case[key]['months']
                         feature['age_years']= 0
-                
                 elif key == 'addresses':
                     address = case[key][0]
                     location_id = address['locationId']
