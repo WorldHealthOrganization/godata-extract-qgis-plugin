@@ -463,15 +463,15 @@ class goDataExtract:
     def validate_user_input(self):
         if not self.access_token:
             QMessageBox.about(self.dlg, 'Warning', 'Please aquire an access token by providing valid username and password \n and then clicking \'Connect\'')
-            return
+            return False
 
         if self.dlg.in_gd_geojoin_box.isChecked() and not self.in_gd_shape:
             QMessageBox.about(self.dlg, 'Warning', 'Please provide a pathway to a shapefile \n or unselect \'Join to shapefile\'')
-            return
+            return False
 
         if not self.dlg.in_gd_output_path.text() or not Path(self.dlg.in_gd_output_path.text()).exists():
             QMessageBox.critical(self.dlg, 'Error', 'Please enter a valid output path')
-            return
+            return False
         else:
             self.in_gd_output_path = self.dlg.in_gd_output_path.text()
 
@@ -482,49 +482,24 @@ class goDataExtract:
                     locations as string datatypes.  You have selected a {self.in_gd_fieldtype} datatype.  This will likely produce unexpected and/or incorrect results. \
                         \n\nWould you like to proceed?', QMessageBox.Yes, QMessageBox.No)
                 if reply == QMessageBox.No:
-                    return 
+                    return False
                 if reply == QMessageBox.Yes:
                     QgsMessageLog.logMessage('Datatype mismatch.  Results may be unexpected', level=Qgis.Warning)
 
-    def get_outbreak_data(self):
-
-        self.validate_user_input()
-        
-        self.set_in_gd_shape_vars()
-
-        self.progressions('Starting plugin', 0)
-        
-        self.progressions('Getting Cases from Go.Data API', 1)
-
-        self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
-        self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
-        
-        params = { 'access_token': self.access_token }
-        fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3Afalse%2C%20%22lastName%22%3A%20false%2C%20%22duplicateKeys%22%3Afalse%7D%7D'
-        self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases?{fld_filter}&access_token={self.access_token}')
-        self.case_data_json = self.case_data.json()
-
-        # QgsMessageLog.logMessage(self.case_data.url, level=Qgis.Success)
-        QgsMessageLog.logMessage(f'Found cases!  There are {len(self.case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
-
-        self.progressions('Getting Locations from Go.Data API', 20)
-
-        self.get_locations()
-
-        self.progressions('Re-organizing data', 30)
-
-        for case in self.case_data_json:
+    def parse_data(self, json_obj):
+        self.features = []
+        for item in json_obj:
             feature = {}
-            keys = case.keys()
+            keys = item.keys()
             for key in keys:
                 if key == 'age':
-                    if 'years' in case[key]:
-                        feature['age_years'] = case[key]['years']
-                    if 'months' in case[key]:
-                        feature['age_months'] = case[key]['months']
+                    if 'years' in item[key]:
+                        feature['age_years'] = item[key]['years']
+                    if 'months' in item[key]:
+                        feature['age_months'] = item[key]['months']
                         feature['age_years']= 0
                 elif key == 'addresses':
-                    address = case[key][0]
+                    address = item[key][0]
                     location_id = address['locationId']
                     feature['locationId'] = location_id ## do not remove
                     feature['locationClassification'] = address['typeId']
@@ -535,26 +510,59 @@ class goDataExtract:
                     if 'addressLine1' in address:
                         feature['addressLine1'] = address['addressLine1']  
                 elif key == 'locations':
-                    if len(case[key]) > 0:
-                        location = case[key][0]
+                    if len(item[key]) > 0:
+                        location = item[key][0]
                         feature['adminLevel'] = location['geographicalLevelId'].split('_')[-1]
                 elif key == 'dob':
-                    feature['dateOfBurial'] = case[key]
+                    feature['dateOfBurial'] = item[key]
                 elif key == 'vaccinesReceived':
-                    if len(case[key]) > 0:
+                    if len(item[key]) > 0:
                         feature['vaccinated'] = 'True'
                     else:
                         feature['vaccinated'] = 'False'
-                elif not isinstance(case[key], collections.abc.Mapping) and not isinstance(case[key], list):
-                    case_value = case[key]     
+                elif not isinstance(item[key], collections.abc.Mapping) and not isinstance(item[key], list):
+                    case_value = item[key]     
                     feature[key] = case_value 
             self.features.append(feature)  
-        
-        self.cases_df = pd.DataFrame(self.features)
-        
+    
         feature=None
-        case=None
+        item=None        
+        return pd.DataFrame(self.features)
+
+    def get_outbreak_data(self):
+
+        if not self.validate_user_input():
+            return
         
+        self.set_in_gd_shape_vars()
+
+        self.progressions('Starting plugin', 0)
+        
+        self.progressions('Getting Cases from Go.Data API', 1)
+
+        self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
+        self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
+        
+        fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3Afalse%2C%20%22lastName%22%3A%20false%2C%20%22duplicateKeys%22%3Afalse%7D%7D'
+        
+        self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases?{fld_filter}&access_token={self.access_token}')
+        self.case_data_json = self.case_data.json()
+        QgsMessageLog.logMessage(f'Found cases!  There are {len(self.case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
+
+        self.contact_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/contacts?{fld_filter}&access_token={self.access_token}')
+        self.contact_data_json = self.contact_data.json()
+        QgsMessageLog.logMessage(f'Found contacts!  There are {len(self.contact_data_json)} contacts in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
+
+        self.progressions('Getting Locations from Go.Data API', 20)
+
+        self.get_locations()
+
+        self.progressions('Re-organizing data', 30)      
+
+        self.cases_df = self.parse_data(self.case_data_json)
+        self.contacts_df = self.parse_data(self.contact_data_json)
+
+        self.contacts_df.to_csv(f'{self.in_gd_output_path}/contacts.csv', index = False, encoding='utf-8-sig')
 
         self.get_admin_level()
         self.progressions('Joining location data to case data', 45)
