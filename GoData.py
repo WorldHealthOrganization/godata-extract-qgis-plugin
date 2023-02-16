@@ -105,8 +105,6 @@ class goDataExtract:
         self.fifteen_days_ago = (self.right_now - self.fifteen_days_delta).date()
         self.twenty_eight_days_ago = (self.right_now - self.twenty_eight_days_delta).date()
 
-        self.out_summary_data = 'Cases by reporting area'
-
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
@@ -119,18 +117,21 @@ class goDataExtract:
     def clear_data_cache(self):
         self.locations_df = None
         self.cases_df = None
+        self.contacts_df = None
         self.locations_reorg_df = None
         self.reorganized_locations = None
 
-    def clear_cases_cache(self):
+    def clear_request_cache(self):
         self.case_data = None
         self.case_data_json = None
+        self.contact_data = None
+        self.contact_data_json = None
         self.features = []
 
     def clear_caches(self):
         self.clear_metadata_cache()
         self.clear_data_cache()
-        self.clear_cases_cache()
+        self.clear_request_cache()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -300,11 +301,10 @@ class goDataExtract:
             self.dlg.in_gd_shape.clear()
 
 
-    def join_to_geo(self):
-        uri = f'file:///{self.in_gd_output_path}/{self.out_summary_data}.csv?delimiter=,&decimal=.'    
+    def join_to_geo(self, name):
+        uri = f'file:///{self.in_gd_output_path}/{name}.csv?delimiter=,&decimal=.'    
         summary_data = QgsVectorLayer(uri, 'in_memory_layer', 'delimitedtext')      
-        self.in_gd_field = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[0]
-      
+
         params = {'INPUT': self.vector_layer, 
                     'FIELD':self.in_gd_field, 
                     'INPUT_2':summary_data, 
@@ -313,7 +313,8 @@ class goDataExtract:
 
         result = processing.run('native:joinattributestable', params)
         result_layer = result['OUTPUT']
-        result_layer.setName(f'{self.shp_stem}_Outbreaks_{self.timestamp}')
+        pfx = name.split(' ', 2)[0]
+        result_layer.setName(f'{pfx}_{self.shp_stem}_{self.timestamp}')
         QgsProject.instance().addMapLayer(result_layer)
 
     def set_in_gd_locate_shp_path(self):
@@ -485,6 +486,8 @@ class goDataExtract:
                     return False
                 if reply == QMessageBox.Yes:
                     QgsMessageLog.logMessage('Datatype mismatch.  Results may be unexpected', level=Qgis.Warning)
+            self.in_gd_field = self.dlg.in_gd_fld_dd.currentText().rsplit(' - ', 2)[0]
+        return True
 
     def parse_data(self, json_obj):
         self.features = []
@@ -533,12 +536,14 @@ class goDataExtract:
 
         if not self.validate_user_input():
             return
-        
+        QgsMessageLog.logMessage(self.dlg.in_gd_fld_dd.currentText(), level = Qgis.Success)
         self.set_in_gd_shape_vars()
 
         self.progressions('Starting plugin', 0)
-        
+
         self.progressions('Getting Cases from Go.Data API', 1)
+
+        self.dlg.accept()
 
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
         self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
@@ -557,37 +562,42 @@ class goDataExtract:
 
         self.get_locations()
 
-        self.progressions('Re-organizing data', 30)      
+        self.progressions('Re-organizing response from Go.Data', 30)      
 
         self.cases_df = self.parse_data(self.case_data_json)
         self.contacts_df = self.parse_data(self.contact_data_json)
 
-        self.contacts_df.to_csv(f'{self.in_gd_output_path}/contacts.csv', index = False, encoding='utf-8-sig')
 
         self.get_admin_level()
-        self.progressions('Joining location data to case data', 45)
-        self.join_locs_to_cases()
+        self.progressions('Joining location data to case and contact data', 45)
+        self.join_locs()
+        
         self.progressions('Cleaning reference data', 60)
-        self.clean_ref_data(self.cases_df)
-        self.progressions('Enhancing case data', 75)
-        self.update_date_fields(self.cases_df)
-        self.get_age_groups(self.cases_df)
+        for df in [self.cases_df, self.contacts_df]:
+            self.clean_ref_data(df)
+            self.update_date_fields(df)
+            self.get_age_groups(df)
 
+        self.progressions('Enhancing data', 75)
         self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_name'].isna(), f'admin_{self.admin_level}_name'] = 'No Location Provided'
         self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_LocationId'].isna(), f'admin_{self.admin_level}_LocationId'] = 'No Location Provided'
         self.cases_df.to_csv(f'{self.in_gd_output_path}/cases.csv', index = False, encoding='utf-8-sig')
-        self.progressions('Summarizing cases by location', 80)
-        self.summarize_cases(self.cases_df)
+        self.contacts_df.to_csv(f'{self.in_gd_output_path}/contacts.csv', index = False, encoding='utf-8-sig')
+        self.progressions('Summarizing data by location', 80)
+
+        cases_csv_name = 'cases by reporting area'
+        contacts_csv_name = 'contacts by reporting area'
+        self.summarize_cases(self.cases_df, cases_csv_name)
+        self.summarize_cases(self.contacts_df, contacts_csv_name)
         if self.dlg.in_gd_geojoin_box.isChecked():
-            self.progressions('Joining summarized cases to shapefile', 90)
-            self.join_to_geo()
+            self.progressions('Joining summarized data to shapefile', 90)
+            self.join_to_geo(cases_csv_name)
+            self.join_to_geo(contacts_csv_name)
         self.progressions('Complete', 100)
 
         self.logout()
 
         self.clear_caches()
-
-        self.dlg.accept()
 
     def logout(self):
         logout = requests.post(f'{self.in_gd_api_url}/api/users/logout?access_token={self.access_token}')
@@ -604,13 +614,14 @@ class goDataExtract:
         self.tabular_join_field =f'admin_{self.admin_level}_LocationId'
         QgsMessageLog.logMessage(f'Most commonly used Admin Level: {str(self.admin_level)}', level=Qgis.Info)
     
-    def join_locs_to_cases(self):
+    def join_locs(self):
         location_flds = [f'admin_{i}_name' for i in range(int(self.admin_level)+1)]
         location_flds.extend([self.tabular_join_field, f'admin_{self.admin_level}_Lat', f'admin_{self.admin_level}_Lng'])
         locations_join = self.locations_reorg_df[location_flds].copy()
         locations_join.rename(columns = {f'admin_{self.admin_level}_Lat':'Lat',
                                         f'admin_{self.admin_level}_Lng':'Lng'}, inplace=True)
         self.cases_df = pd.merge(self.cases_df, locations_join, how='left', left_on='locationId', right_on=self.tabular_join_field)
+        self.contacts_df = pd.merge(self.contacts_df, locations_join, how='left', left_on='locationId', right_on=self.tabular_join_field)
 
     def reorganize_locations(self, loc_df):
         try:
@@ -682,7 +693,7 @@ class goDataExtract:
         if 'age_years' in df.columns:
             df['ageClass'] = pd.cut(df['age_years'], bins=age_bins, labels=age_labels)
     
-    def summarize_cases(self, df):
+    def summarize_cases(self, df, output_name):
         try:
             df.loc[df['dateOfReporting']==self.yesterday.strftime('%Y-%m-%d'), 'Daily New Confirmed']=1
         except:
@@ -717,4 +728,4 @@ class goDataExtract:
 
         summary_cases = df.groupby([f'admin_{self.admin_level}_name', self.tabular_join_field]).sum()[['Daily New Confirmed','Confirmed Last Seven','Confirmed Last Fourteen','Confirmed Last Twenty One','Confirmed Last Twenty Eight','Total Count']]
 
-        summary_cases.to_csv(f'{self.in_gd_output_path}/{self.out_summary_data}.csv', encoding='utf-8-sig')
+        summary_cases.to_csv(f'{self.in_gd_output_path}/{output_name}.csv', encoding='utf-8-sig')
