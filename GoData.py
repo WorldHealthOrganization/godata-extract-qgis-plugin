@@ -548,8 +548,8 @@ class goDataExtract:
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
         self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
         
-        fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3Afalse%2C%20%22lastName%22%3A%20false%2C%20%22duplicateKeys%22%3Afalse%7D%7D'
-        
+      # fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3A%20false%2C%20%22middleName%22%3A%20false%2C%20%22lastName%22%3A%20false%2C%20%22visualId%22%3A%20false%2C%20%22duplicateKeys%22%3A%20false%7D%7D'
+        fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3A%20false%2C%20%22middleName%22%3A%20false%2C%20%22lastName%22%3A%20false%2C%20%22visualId%22%3A%20false%2C%20%22duplicateKeys%22%3A%20false%7D%7D'
         self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases?{fld_filter}&access_token={self.access_token}')
         self.case_data_json = self.case_data.json()
         QgsMessageLog.logMessage(f'Found cases!  There are {len(self.case_data_json)} cases in the {self.selected_outbreak_name} outbreak', level=Qgis.Success)
@@ -568,15 +568,15 @@ class goDataExtract:
         self.contacts_df = self.parse_data(self.contact_data_json)
 
 
-        self.get_admin_level()
-        self.progressions('Joining location data to case and contact data', 45)
-        self.join_locs()
-        
-        self.progressions('Cleaning reference data', 60)
+        self.get_admin_level()        
+        self.progressions('Cleaning reference data', 45)
         for df in [self.cases_df, self.contacts_df]:
             self.clean_ref_data(df)
             self.update_date_fields(df)
             self.get_age_groups(df)
+
+        self.progressions('Joining location data to case and contact data', 60)
+        self.join_locs()
 
         self.progressions('Enhancing data', 75)
         self.cases_df.loc[self.cases_df[f'admin_{self.admin_level}_name'].isna(), f'admin_{self.admin_level}_name'] = 'No Location Provided'
@@ -658,7 +658,8 @@ class goDataExtract:
 
     def update_date_fields(self, df):
         date_flds = ['date', 'dateOfReporting', 'dateOfOnset', 'dateOfInfection', 'dateOfLastContact', 
-                    'dateBecomeCase', 'dateOfOutcome', 'dateFollowUpStart' , 'dateFollowUpEnd', 'dateOfBurial']
+                    'dateBecomeCase', 'dateOfOutcome', 'dateFollowUpStart' , 'dateFollowUpEnd', 'dateOfBurial', 
+                    'dateBecomeContact']
         dt_flds = ['createdAt', 'updatedAt']
         for fld in date_flds:
             try:
@@ -691,8 +692,9 @@ class goDataExtract:
         age_bins = [-1, 4, 14, 24, 64, 150]
         age_labels = ['<5 years', '5-14 years', '15-24 years', '25-64 years', '65+ years']
         if 'age_years' in df.columns:
-            df['ageClass'] = pd.cut(df['age_years'], bins=age_bins, labels=age_labels)
-    
+            idx = df.columns.get_loc('age_years') + 2
+            df.insert(idx, 'ageClass', pd.cut(df['age_years'], bins=age_bins, labels=age_labels) ) 
+
     def summarize_cases(self, df, output_name):
         try:
             df.loc[df['dateOfReporting']==self.yesterday.strftime('%Y-%m-%d'), 'Daily New Confirmed']=1
