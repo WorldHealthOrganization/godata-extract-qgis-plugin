@@ -548,7 +548,6 @@ class goDataExtract:
         self.selected_outbreak_name = self.dlg.in_gd_ob_dd.currentText()
         self.selected_outbreak_id = self.outbreaks_cache[self.selected_outbreak_name]
         
-      # fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3A%20false%2C%20%22middleName%22%3A%20false%2C%20%22lastName%22%3A%20false%2C%20%22visualId%22%3A%20false%2C%20%22duplicateKeys%22%3A%20false%7D%7D'
         fld_filter = r'filter=%7B%22fields%22%3A%20%7B%22firstName%22%3A%20false%2C%20%22middleName%22%3A%20false%2C%20%22lastName%22%3A%20false%2C%20%22visualId%22%3A%20false%2C%20%22duplicateKeys%22%3A%20false%7D%7D'
         self.case_data = requests.get(f'{self.in_gd_api_url}/api/outbreaks/{self.selected_outbreak_id}/cases?{fld_filter}&access_token={self.access_token}')
         self.case_data_json = self.case_data.json()
